@@ -10,6 +10,7 @@ use Validator;
 use Illuminate\Routing\UrlGenerator;
 use File;
 use Auth;
+use DB;
 
 class NewsController extends Controller
 {
@@ -25,11 +26,12 @@ class NewsController extends Controller
 
     public function add_news(Request $request)
     {
+    	// dd($request->all());
         $validator = Validator::make($request->all(),
         [
             "token"=>"required",
             "title"=>"required|string",
-            "category_id"=>"required"
+            // "category_id"=>"required"
         ]); 
 
         if($validator->fails())
@@ -40,7 +42,7 @@ class NewsController extends Controller
             ],400);
         }
 
-        $profile_picture = $request->profile_picture;
+        $profile_picture = $request->profile_image;
         $file_name = "";
 
         if($profile_picture == null || $profile_picture == "") {
@@ -93,24 +95,36 @@ class NewsController extends Controller
 	{
 	 	$file_directory = $this->base_url."/profile_images";
 	 	$user = auth("users")->authenticate($token);
-        $user_id = $user->id; 
+        $user_id = $user->id;
+        $user_name = $user->firstname." ".$user->lastname;
 
         if($pagination == null || $pagination == "") {
-	        $news = $this->news->where("user_id", $user_id)->orderBy("id","DESC")->get()->toArray();
+	        // $news = $this->news->where("user_id", $user_id)->orderBy("id","DESC")->get()->toArray();
+	        $news = DB::table('news')
+	        		->leftjoin('categories', 'news.category_id', '=', 'categories.id')
+	        		->select('news.*', 'categories.title as category')
+	        		->where("user_id", $user_id)->orderBy("id","DESC")->get()->toArray();
 
 	        return response()->json([
 	            "success"=>true,
 	            "data"=>$news,
-	            "file_directory"=>$file_directory
+	            "file_directory"=>$file_directory,
+	            "author" => $user_name
          	], 200);
 	    }
 
-	    $news_paginated = $this->news->where("user_id", $user_id)->orderBy("id","DESC")->paginate($pagination);
+	    // $news_paginated = $this->news->where("user_id", $user_id)->orderBy("id","DESC")->paginate($pagination);
+
+	    $news_paginated = DB::table('news')
+	        		->join('categories', 'news.category_id', '=', 'categories.id')
+	        		->select('news.*', 'categories.title as category')
+	        		->where("user_id", $user_id)->orderBy("id","DESC")->paginate($pagination);
 
 	    return response()->json([
 	        "success"=>true,
 	        "data"=>$news_paginated,
-	        "file_directory"=>$file_directory
+	        "file_directory"=>$file_directory,
+	        "author" => $user_name
 	    ], 200);
 	 }
 
@@ -119,7 +133,7 @@ class NewsController extends Controller
   		$validator = Validator::make($request->all(),
       	[
           "title"=>"required|string",
-          "category_id"=>"required"
+          // "category_id"=>"required"
       	]);
 
 		if($validator->fails()) {
@@ -129,7 +143,7 @@ class NewsController extends Controller
 		  	], 400);
 		}
 
-  		$findData = $this->contacts->find($id);
+  		$findData = $this->news->find($id);
 
   		if(!$findData) {
 		    return response()->json([
@@ -140,7 +154,7 @@ class NewsController extends Controller
 
 		$getFile = $findData->image_file;
 		$getFile == "default-avatar.png"? :File::delete('profile_images/'.$getFile);
-		$profile_picture = "";
+		$profile_picture = $request->profile_image;
 
 		$file_name = "";
 
@@ -237,6 +251,7 @@ class NewsController extends Controller
 	    $file_directory = $this->base_url."/profile_images";
 	    $user = auth("users")->authenticate($token);
 	    $user_id = $user->id;
+	    $user_name = $user->firstname." ".$user->lastname;
 
 	    $search = explode("%20",$search);
 	    $search = implode(" ",$search);
@@ -251,7 +266,8 @@ class NewsController extends Controller
 	        return response()->json([
 	            "success"=>true,
 	            "data"=>$non_paginated_search_query,
-	            "file_directory"=>$file_directory
+	            "file_directory"=>$file_directory,
+	            "author" => $user_name
 	        ], 200);
 	    }
 
@@ -263,7 +279,8 @@ class NewsController extends Controller
 	    return response()->json([
 	        "success"=>true,
 	        "data"=>$paginated_search_query,
-	        "file_directory"=>$file_directory
+	        "file_directory"=>$file_directory,
+	        "author" => $user_name
 	    ], 200);
 	}
 }
