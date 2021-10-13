@@ -258,10 +258,19 @@ class NewsController extends Controller
 
 	    if($pagination == null || $pagination == "") {
 
-	        $non_paginated_search_query = $this->news::where("user_id", $user_id)->
-	        	where(function($query) use ($search) {
-	           		$query->where("title", "LIKE", "%$search%");
-	       		})->orderBy("id","DESC")->get()->toArray();
+	        // $non_paginated_search_query = $this->news::where("user_id", $user_id)->
+	        // 	where(function($query) use ($search) {
+	        //    		$query->where("title", "LIKE", "%$search%");
+	       	// 	})->orderBy("id","DESC")->get()->toArray();
+
+	       	$non_paginated_search_query = DB::table('news')
+	        		->leftjoin('categories', 'news.category_id', '=', 'categories.id')
+	        		->select('news.*', 'categories.title as category')
+	        		->where("user_id", $user_id)
+		        	->where(function($query) use ($search) {
+		           		$query->where("news.title", "LIKE", "%$search%");
+		       		})
+	        		->orderBy("id","DESC")->get()->toArray();
 
 	        return response()->json([
 	            "success"=>true,
@@ -271,10 +280,19 @@ class NewsController extends Controller
 	        ], 200);
 	    }
 
-	    $paginated_search_query = $this->news::where("user_id", $user_id)->
-	    	where(function($query) use ($search) {
-	       	$query->where("title","LIKE","%$search%");
-   		})->orderBy("id","DESC")->paginate($pagination);
+	    // $paginated_search_query = $this->news::where("user_id", $user_id)->
+	    // 	where(function($query) use ($search) {
+	    //    	$query->where("title","LIKE","%$search%");
+   		// })->orderBy("id","DESC")->paginate($pagination);
+
+       	$paginated_search_query = DB::table('news')
+        		->leftjoin('categories', 'news.category_id', '=', 'categories.id')
+        		->select('news.*', 'categories.title as category')
+        		->where("user_id", $user_id)
+	        	->where(function($query) use ($search) {
+	           		$query->where("news.title", "LIKE", "%$search%");
+	       		})
+        		->orderBy("id","DESC")->paginate($pagination);
 
 	    return response()->json([
 	        "success"=>true,
